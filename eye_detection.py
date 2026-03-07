@@ -1,37 +1,30 @@
 import cv2
+import mediapipe as mp
 
-# Load face and eye detectors
-face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-)
-
-eye_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades + 'haarcascade_eye.xml'
-)
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh()
 
 cap = cv2.VideoCapture(0)
 
 while True:
-    ret, frame = cap.read()
+    success, frame = cap.read()
+    frame = cv2.flip(frame, 1)
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(rgb)
 
-    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+    if results.multi_face_landmarks:
+        for face_landmarks in results.multi_face_landmarks:
+            for id, lm in enumerate(face_landmarks.landmark):
+                h, w, _ = frame.shape
+                x = int(lm.x * w)
+                y = int(lm.y * h)
 
-    for (x, y, w, h) in faces:
-        cv2.rectangle(frame, (x,y), (x+w,y+h), (255,0,0), 2)
+                cv2.circle(frame, (x,y), 1, (0,255,0), -1)
 
-        roi_gray = gray[y:y+h, x:x+w]
-        roi_color = frame[y:y+h, x:x+w]
+    cv2.imshow("Eye Tracking", frame)
 
-        eyes = eye_cascade.detectMultiScale(roi_gray)
-
-        for (ex,ey,ew,eh) in eyes:
-            cv2.rectangle(roi_color,(ex,ey),(ex+ew,ey+eh),(0,255,0),2)
-
-    cv2.imshow('Eye Tracking', frame)
-
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    if cv2.waitKey(1) == 27:
         break
 
 cap.release()
